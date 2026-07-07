@@ -41,10 +41,11 @@ if 'dust_base' not in st.session_state:
 # 3. 레이아웃 분할: 상단은 경제성 대시보드 정보 출력
 col_left, col_right = st.columns(2)
 
-# 가독성을 위해 사용자가 속도를 실시간 조절할 수 있도록 메인 화면 상단에 배치
 with col_left:
     st.subheader("⚙️ LINE A: 기계식 컨베이어")
-    normal_speed = st.slider("LINE A 이송 속도 (m/s)", 0.5, 5.0, 2.5, 0.1, key="n_speed")
+    # 현실적인 기계식 물류 제한 속도 반영 (최대 3.0 m/s)
+    normal_speed = st.slider("LINE A 이송 속도 (m/s)", 0.5, 3.0, 1.5, 0.1, key="n_speed", 
+                             help="기계식은 레일 마찰과 관성 한계로 인해 최대 속도가 3.0 m/s로 제한됩니다.")
     normal_res = calculate_normal_factory(normal_speed, global_lanes, global_clean)
     
     st.metric(label="LINE A 최종 순이익", value=f"{normal_res['net_profit']:,} 원")
@@ -56,7 +57,9 @@ with col_left:
 
 with col_right:
     st.subheader("🧲 LINE B: 초전도 자기부상")
-    ice_speed = st.slider("LINE B 이송 속도 (m/s)", 0.5, 15.0, 7.0, 0.1, key="i_speed")
+    # 공기 저항(와류 현상)을 고려한 영리한 클린룸 상한 속도 반영 (최대 8.0 m/s)
+    ice_speed = st.slider("LINE B 이송 속도 (m/s)", 0.5, 8.0, 4.0, 0.1, key="i_speed",
+                           help="초전도 레일은 무마찰이나, 클린룸 내부 공기 교란(와류)을 억제하기 위해 공정 한계 속도를 8.0 m/s로 제어합니다.")
     ice_res = calculate_ice_factory(ice_speed, global_lanes, global_clean)
     
     profit_diff = ice_res['net_profit'] - normal_res['net_profit']
@@ -69,20 +72,19 @@ with col_right:
 
 st.markdown("---")
 st.subheader("🎦 실시간 2D 디지털 트윈 시뮬레이션 (동시 비교)")
-st.caption("※ 속도 가속 시 LINE A(기계식)의 웨이퍼 파손 한계(진동 및 불량 변색)와 LINE B(초전도)의 고속 안정성을 시각적으로 대조합니다.")
+st.caption("※ 현실적 속도 상한선 내에서 기계식의 한계(진동 변색)와 초전도 방식의 무마찰 고속 안정성을 시각적 대조 환경으로 관측합니다.")
 
-# 두 개의 그래픽 노드를 나란히 배치하기 위한 컬럼
+# 그래픽 배치를 위한 컬럼 분할
 vis_col1, vis_col2 = st.columns(2)
 plot_container_a = vis_col1.empty()
 plot_container_b = vis_col2.empty()
 
-# 애니메이션 무한 루프 작동
 frame = 0
 map_width = 160.0
 
 while True:
     # -----------------------------------------------------------------
-    # 1. LINE A (기계식 컨베이어 벨트) 파티클 및 웨이퍼 변색/떨림 연산
+    # 1. LINE A (기계식 컨베이어) 파티클 & 웨이퍼 물리 거동 연산
     # -----------------------------------------------------------------
     offset_a = (frame * normal_speed) % map_width
     current_x_a = []
@@ -98,7 +100,7 @@ while True:
             cur_y = max(11, min(95, cur_y))
             current_x_a.append(cur_x)
             current_y_a.append(cur_y)
-            colors_a.append("#FF4B4B") # 기계식 오염 파티클 (빨간색)
+            colors_a.append("#FF4B4B") # 마찰 오염 빨간 먼지
 
     fig_a, ax_a = plt.subplots(figsize=(6, 3))
     ax_a.set_xlim(0, 100)
@@ -106,27 +108,26 @@ while True:
     ax_a.axis('off')
     fig_a.patch.set_facecolor('#0E1117')
     ax_a.set_facecolor('#161A24')
-    ax_a.axhline(y=10, color='#4A5568', linestyle='-', linewidth=6) # 하단 레일
+    ax_a.axhline(y=10, color='#4A5568', linestyle='-', linewidth=6)
 
-    # 기계식 웨이퍼 한계 돌파 조건 (속도 3.5 이상일 때 한계 연출 활성화)
+    # 기계식 속도 제한에 가까워질 때 변색 및 진동 임계점 조정 (2.0 m/s 이상 시 페널티 연출)
     wafer_y_a = 10
-    wafer_color_a = '#63B3ED' # 정상 하늘색
+    wafer_color_a = '#63B3ED' 
     
-    if normal_speed >= 3.5:
-        # 과속 시 진동으로 덜덜 떨림 구현 (속도가 빠를수록 요동침)
-        vibration_intensity = (normal_speed - 3.0) * 0.8
+    if normal_speed >= 2.0:
+        vibration_intensity = (normal_speed - 1.5) * 1.2
         wafer_y_a += np.random.uniform(-vibration_intensity, vibration_intensity)
-        wafer_color_a = '#E53E3E' # 파손 위험 경고 색상 (탁한 빨강)
-        ax_a.text(50, 85, "⚠️ MECHANICAL LIMIT EXCEEDED", color='#E53E3E', weight='bold', ha='center', fontsize=9)
+        wafer_color_a = '#E53E3E' # 파손 위험 알림 경고색
+        ax_a.text(50, 85, "⚠️ MECHANICAL FRICTION LIMIT", color='#E53E3E', weight='bold', ha='center', fontsize=9)
 
     rect_a = plt.Rectangle((42, wafer_y_a), 16, 12, color=wafer_color_a, zorder=5)
     ax_a.add_patch(rect_a)
     ax_a.text(50, wafer_y_a + 6, "WAFER A", color='black', weight='bold', ha='center', va='center', zorder=6)
     ax_a.scatter(current_x_a, current_y_a, color=colors_a, s=12, alpha=0.6, zorder=3)
-    ax_a.set_title("LINE A 물리 거동", color='white', fontsize=10)
+    ax_a.set_title("LINE A 물리 거동 (Max 3.0m/s)", color='white', fontsize=10)
 
     # -----------------------------------------------------------------
-    # 2. LINE B (초전도 자기부상 레일) 파티클 및 안정적 부상 연산
+    # 2. LINE B (초전도 자기부상) 파티클 & 웨이퍼 물리 거동 연산
     # -----------------------------------------------------------------
     offset_b = (frame * ice_speed) % map_width
     current_x_b = []
@@ -137,14 +138,13 @@ while True:
         cur_x = (row['base_x'] - offset_b) % map_width
         cur_y = row['y']
         if cur_x <= 100:
-            # 물체 부근 통과 시 속도 비례 유체 밀림 현상
             if 35 <= cur_x <= 65:
                 disturbance = np.sin(frame * 0.5 + row['id']) * (ice_speed * 1.5)
                 cur_y = row['y'] + disturbance
             cur_y = max(11, min(95, cur_y))
             current_x_b.append(cur_x)
             current_y_b.append(cur_y)
-            colors_b.append("#A0AEC0") # 상시 대기/유체 흐름 파티클 (회색)
+            colors_b.append("#A0AEC0") # 기류 추종 회색 먼지
 
     fig_b, ax_b = plt.subplots(figsize=(6, 3))
     ax_b.set_xlim(0, 100)
@@ -152,24 +152,23 @@ while True:
     ax_b.axis('off')
     fig_b.patch.set_facecolor('#0E1117')
     ax_b.set_facecolor('#161A24')
-    ax_b.axhline(y=10, color='#4A5568', linestyle='-', linewidth=6) # 하단 레일
+    ax_b.axhline(y=10, color='#4A5568', linestyle='-', linewidth=6)
 
-    # 초전도 부상 웨이퍼는 고속(최대 15m/s)에서도 완벽하게 수평을 유지하며 공중에 떠 있음
-    rect_b = plt.Rectangle((42, 43), 16, 12, color='#9AE6B4', zorder=5) # 초록색 안정 상태 유지
+    # 초전도 부상 웨이퍼는 지정 범위(최대 8.0 m/s) 내에서 완벽한 수평 유지
+    rect_b = plt.Rectangle((42, 43), 16, 12, color='#9AE6B4', zorder=5)
     ax_b.add_patch(rect_b)
     ax_b.text(50, 49, "WAFER B", color='black', weight='bold', ha='center', va='center', zorder=6)
-    ax_b.text(50, 22, f"Levitation Gap (Stable)", color='#A0AEC0', fontsize=8, ha='center')
+    ax_b.text(50, 22, "Levitation Gap (Stable)", color='#A0AEC0', fontsize=8, ha='center')
     ax_b.scatter(current_x_b, current_y_b, color=colors_b, s=12, alpha=0.6, zorder=3)
-    ax_b.set_title("LINE B 물리 거동", color='white', fontsize=10)
+    ax_b.set_title("LINE B 물리 거동 (Max 8.0m/s)", color='white', fontsize=10)
 
     # -----------------------------------------------------------------
-    # 3. 각 컨테이너 박스에 실시간 그래프 렌더링 후 메모리 해제
+    # 3. 실시간 화면 전송 및 메모리 리셋
     # -----------------------------------------------------------------
     plot_container_a.pyplot(fig_a)
     plot_container_b.pyplot(fig_b)
     plt.close(fig_a)
     plt.close(fig_b)
 
-    # 프레임 갱신 주기 제어 (입자들이 부드럽게 흐르도록 설정)
     time.sleep(0.02)
     frame += 1
