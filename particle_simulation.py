@@ -116,16 +116,30 @@ while True:
     # 하단 레일 라인 그리기
     ax.axhline(y=10, color='#4A5568', linestyle='-', linewidth=6)
 
-    # 중앙 고정 물체 배치 (모드별 부상 높이 시각화 대조)
+    # 중앙 고정 물체 배치 (임계 속도에 따른 기계식 한계 연출 추가)
     if mode == "일반 마찰식 컨베이어 벨트":
-        rect = plt.Rectangle((42, 10), 16, 12, color='#63B3ED', zorder=5)
-        ax.text(50, 16, "WAFER", color='black', weight='bold', ha='center', va='center', zorder=6)
+        # 기본 위치 및 색상
+        wafer_y = 10
+        wafer_color = '#63B3ED' # 정상 상태 (하늘색)
+        
+        # 속도가 6 이상일 때 기계적 한계 도달 연출
+        if move_speed >= 6:
+            # 진동 세기 계산 (속도가 빠를수록 더 격렬하게 덜덜 떪)
+            vibration_intensity = (move_speed - 5) * 0.4
+            wafer_y += np.random.uniform(-vibration_intensity, vibration_intensity)
+            wafer_color = '#E53E3E' # 과속/변색 상태 (경고성 붉은색)
+            
+        rect = plt.Rectangle((42, wafer_y), 16, 12, color=wafer_color, zorder=5)
+        ax.add_patch(rect)
+        ax.text(50, wafer_y + 6, "WAFER", color='black', weight='bold', ha='center', va='center', zorder=6)
+        
     else:
+        # 반자성 자기부상 레일 모드 (고속에서도 안정적)
         rect = plt.Rectangle((42, 44), 16, 12, color='#9AE6B4', zorder=5)
-        ax.text(50, 38, "WAFER", color='black', weight='bold', ha='center', va='center', zorder=6)
+        ax.add_patch(rect)
+        ax.text(50, 50, "WAFER", color='black', weight='bold', ha='center', va='center', zorder=6)
         ax.text(50, 18, f"Levitation Gap (v={move_speed})", color='#A0AEC0', fontsize=8, ha='center')
 
-    ax.add_patch(rect)
     ax.scatter(current_x_list, current_y_list, color=color_list, s=15, alpha=0.7, zorder=3)
 
     # --- 화면 스왑 교체 ---

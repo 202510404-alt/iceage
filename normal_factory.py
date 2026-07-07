@@ -20,15 +20,13 @@ def calculate_normal_factory(speed, lanes, cleanliness):
 
     # [내부 물리 및 환경 지표 계산]
     # 속도가 빠를수록, 차선이 많아 교차로가 늘어날수록 물리 진동 증가
-    vibration = speed * 10.0 * math.sqrt(lanes)
+    vibration = speed * 2.0 * math.sqrt(lanes) if speed <= 3 else (speed ** 2) * 1.5 * math.sqrt(lanes)
     
     # 청정도가 높으면 먼지가 줄지만, 기계식은 속도가 빠르면 마찰 분진이 추가 발생
-    final_dust = max(0.1, (10 - cleanliness) + (speed * 1.5))
-
+    final_dust = max(0.1, (10 - cleanliness) + (speed * 0.5))
     # [품질 및 비용 페널티 계산]
     # 파손 불량률 (진동과 먼지에 비례, 차선 수가 많으면 분산 효과 반영)
-    damage_rate = min(100.0, ((vibration * 0.5) + (final_dust * 0.8)) / lanes)
-
+    damage_rate = min(100.0, ((vibration * 0.01) + (final_dust * 0.02)) / lanes)
     # 청정도가 올라갈수록 관리 비용은 제곱(비선형)으로 폭증 (민석 학생 아이디어)
     clean_cost = (cleanliness ** 2) * 15000  
     wear_cost = (speed * 8000) * lanes       # 마찰 마모에 따른 부품 정비비

@@ -17,14 +17,14 @@ def calculate_ice_factory(speed, lanes, cleanliness):
 
     # [물리학적 특성 반영]
     # 아무리 초전도 부상이라도 속도가 극단적으로 빠르면 공기 저항 및 자기장 복원력 때문에 미세 진동 발생
-    vibration = (speed ** 1.5) * 0.02
+    vibration = (speed ** 1.1) * 0.005
     
     # 기계 마찰 분진은 없지만, 외부 유입 미세 먼지는 청정도에 반비례함
-    final_dust = max(0.1, float(10 - cleanliness))
+    final_dust = max(0.05, float(10 - cleanliness) * 0.1)
 
     # [품질 지표 계산 - 0.001% 단위 미세 불량률 반영]
-    dust_penalty = final_dust * 0.04
-    vibration_penalty = vibration * 0.05
+    dust_penalty = final_dust * 0.005
+    vibration_penalty = vibration * 0.01
     damage_rate = min(100.0, dust_penalty + vibration_penalty)
 
     # [산업공학적 비용 및 제약 조건 계산]
@@ -34,10 +34,9 @@ def calculate_ice_factory(speed, lanes, cleanliness):
 
     # 2. 현실 반영 제약: 초기 투자비(CapEx) 감가상각 및 필수 부속 안전 설비 비용
     # (초전도 냉동기 투자비 및 냉매 누출 방지, 센서, 강제 배기 등 방재 시스템 운영비 포함)
-    capex_depreciation_per_lane = 600000  
-    base_cooling_per_lane = 250000        
-    space_cost_per_lane = 150000          
-    
+    capex_depreciation_per_lane = 15000000  # 1,500만 원으로 상향 (예시)
+    base_cooling_per_lane = 5000000         # 500만 원으로 상향
+    space_cost_per_lane = 1000000           # 100만 원으로 상향
     # 차선 효율 보너스
     lane_efficiency_bonus = max(0.8, 1.0 - (lanes - 1) * 0.05) 
     
