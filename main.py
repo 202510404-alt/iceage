@@ -39,56 +39,66 @@ if 'dust_base' not in st.session_state:
 # 내부 실시간 연산 함수 정의 (캐싱 문제 원천 차단)
 # -----------------------------------------------------------------
 def run_normal_calc(speed, lanes, cleanliness):
-    ITEM_VALUE = 200000             
-    RAW_MATERIAL_COST = 50000       
-    CAPACITY_PER_SPEED_LANE = 500 
+    ITEM_VALUE = 200000             # 완성품 가치: 20만 원
+    RAW_MATERIAL_COST = 50000       # 원자재 원가: 5만 원
+    # 생산량 체급 격차 완화 (속도가 느려도 차선당 기본 생산 베이스를 높임)
+    CAPACITY_PER_SPEED_LANE = 1000 
     total_produced = int(speed * lanes * CAPACITY_PER_SPEED_LANE)
 
     vibration = speed * 2.0 * math.sqrt(lanes)
-    # 청정도가 낮을수록(1에 가까울수록) 기계 마찰과 겹쳐 먼지가 폭증함
-    final_dust = max(0.1, (11 - cleanliness) * 2.0 + (speed * 1.2))
-    # 불량률을 먼지에 매우 민감하게 설정
-    damage_rate = min(100.0, (vibration * 0.03) + (final_dust * 0.15))
+    
+    # [청정도 패널티 극대화] 
+    # 청정도가 1단계이면 베이스 먼지가 40%까지 치솟음
+    final_dust = max(0.1, (11 - cleanliness) * 4.0 + (speed * 1.2))
+    
+    # 먼지가 많을 때 불량률이 폭발적으로 상승하도록 제곱(2승) 수식 적용
+    # 청정도가 낮으면 불량률이 30%~70%까지 치솟아 공장이 망하게 만듦
+    damage_rate = min(100.0, (vibration * 0.1) + ((final_dust ** 1.8) * 0.12))
     
     damaged_count = int(total_produced * (damage_rate / 100.0))
     perfect_count = total_produced - damaged_count
 
-    # 청정 관리비 현실화 (단계가 올라갈수록 필터 공조 유지비 대폭 상승)
-    base_facility_cost = 300000
-    cleanliness_cost_per_lane = cleanliness * 350000 
+    # 청정 필터 및 공조 시스템 유지비 현실화 (9~10단계는 비용 폭탄)
+    base_facility_cost = 500000
+    cleanliness_cost_per_lane = (cleanliness ** 2.0) * 120000  # 고단계 청정 시 비용 폭증
     total_management_cost = float((base_facility_cost + cleanliness_cost_per_lane) * lanes)
 
     total_revenue = perfect_count * ITEM_VALUE
     total_raw_cost = total_produced * RAW_MATERIAL_COST
-    net_profit = float(total_revenue - total_raw_cost - total_management_cost)
+    
+    # 불량품 처리 비용 페널티 추가 (폐기 비용 장당 3만원)
+    waste_penalty = damaged_count * 30000
+    net_profit = float(total_revenue - total_raw_cost - total_management_cost - waste_penalty)
     
     return total_produced, perfect_count, damaged_count, vibration, final_dust, damage_rate, total_management_cost, net_profit
 
 def run_ice_calc(speed, lanes, cleanliness):
     ITEM_VALUE = 200000             
     RAW_MATERIAL_COST = 50000       
-    CAPACITY_PER_SPEED_LANE = 600 
+    CAPACITY_PER_SPEED_LANE = 800  # 속도가 빠른 대신 기본 생산 단위를 낮춰 기계식과 밸런스 맞춤
     total_produced = int(speed * lanes * CAPACITY_PER_SPEED_LANE)
 
     vibration = (speed ** 1.1) * 0.005
-    # 초전도 레일은 먼지가 덜 나지만 청정도가 낮으면 외부 유입 먼지 영향 받음
-    final_dust = max(0.05, float(11 - cleanliness) * 0.8)
-    damage_rate = min(100.0, (vibration * 0.01) + (final_dust * 0.02))
+    
+    # 초전도라도 청정도가 1~2단계이면 외부 먼지 유입으로 치명타
+    final_dust = max(0.05, float(11 - cleanliness) * 3.5)
+    damage_rate = min(100.0, (vibration * 0.01) + ((final_dust ** 1.6) * 0.08))
     
     damaged_count = int(total_produced * (damage_rate / 100.0))
     perfect_count = total_produced - damaged_count
 
-    # 초전도는 고단계 청정(10단계 근처) 유지 시 에어샤워 및 정밀 진공 유지비가 지수함수로 폭증함
-    base_cooling_cost = 900000
-    cleanliness_cost_per_lane = (cleanliness ** 2.2) * 45000  
+    # 초전도 핵심: 8~10단계 초고청정 클린룸 유지비는 억 단위에 가깝게 비용 폭탄 투하
+    base_cooling_cost = 1500000
+    cleanliness_cost_per_lane = (cleanliness ** 3.2) * 45000  # 10단계 시 약 700만 원 돌파
     total_management_cost = float((base_cooling_cost + cleanliness_cost_per_lane) * lanes)
 
     total_revenue = perfect_count * ITEM_VALUE
     total_raw_cost = total_produced * RAW_MATERIAL_COST
-    net_profit = float(total_revenue - total_raw_cost - total_management_cost)
+    
+    waste_penalty = damaged_count * 30000
+    net_profit = float(total_revenue - total_raw_cost - total_management_cost - waste_penalty)
     
     return total_produced, perfect_count, damaged_count, vibration, final_dust, damage_rate, total_management_cost, net_profit
-
 
 # 3. 레이아웃 분할: 상단은 경제성 대시보드 정보 출력
 col_left, col_right = st.columns(2)
