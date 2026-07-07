@@ -1,3 +1,5 @@
 python3 -m streamlit run /home/bacon/iceage/main.py
+python3 -m streamlit run /home/bacon/iceage/particle_simulation.py
+
 
 https://iceage-envmk9kbqsray3yvfmpn5m.streamlit.app/
