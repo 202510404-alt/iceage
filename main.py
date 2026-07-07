@@ -20,7 +20,6 @@ st.sidebar.markdown("두 라인의 베이스 환경 조건을 설정합니다.")
 global_lanes = st.sidebar.slider("공통 레일 차선 수 (줄)", 1, 4, 1, 1, key="g_lanes")
 global_clean = st.sidebar.slider("공통 클린룸 청정도 (단계)", 1, 10, 7, 1, key="g_clean")
 
-# 애니메이션용 누적 프레임 세션 상태 관리 (뚝뚝 끊김 방지)
 if 'ani_frame' not in st.session_state:
     st.session_state.ani_frame = 0
 
@@ -40,7 +39,7 @@ if 'dust_base' not in st.session_state:
     st.session_state.dust_base = pd.DataFrame(dust_data)
 
 # -----------------------------------------------------------------
-# 내부 실시간 연산 함수 정의 (경제성 & 페널티 황금 밸런스 셋)
+# 상단 대시보드용 고정 물리 경제성 연산 함수
 # -----------------------------------------------------------------
 def run_normal_calc(speed, lanes, cleanliness):
     ITEM_VALUE = 200000             
@@ -93,41 +92,45 @@ def run_ice_calc(speed, lanes, cleanliness):
     return total_produced, perfect_count, damaged_count, vibration, final_dust, damage_rate, total_management_cost, net_profit
 
 
-# 3. 레이아웃 분할: 상단은 경제성 대시보드 정보 출력
+# 3. 레이아웃 분할: 상단 경제성 대시보드
+st.markdown("### 📊 1. 공정 경제성 실증 대시보드")
 col_left, col_right = st.columns(2)
 
 with col_left:
     st.subheader("⚙️ LINE A: 기계식 컨베이어")
-    normal_speed = st.slider("LINE A 이송 속도 (m/s)", 0.5, 3.0, 1.5, 0.1, key="n_speed")
+    normal_dashboard_speed = st.slider("LINE A 가동 속도 설정 (m/s)", 0.5, 3.0, 1.5, 0.1, key="n_dash_speed")
     
-    n_prod, n_perf, n_dam, n_vib, n_dust, n_rate, n_cost, n_profit = run_normal_calc(normal_speed, global_lanes, global_clean)
+    n_prod, n_perf, n_dam, n_vib, n_dust, n_rate, n_cost, n_profit = run_normal_calc(normal_dashboard_speed, global_lanes, global_clean)
     
     st.metric(label="LINE A 최종 순이익", value=f"{n_profit:,} 원")
-    st.markdown("**🔹 물리/품질 수치**")
-    st.write(f"- 레일 마찰 진동수: `{n_vib:.1f} Hz` | 최종 먼지량: `{n_dust:.1f} %`")
-    st.write(f"- 부품 파손 불량률: `{n_rate:.3f} %` (물리 진동 치명타)")
-    st.markdown("**🔹 생산/재무 수치**")
-    st.write(f"- 시간당 총 투입량: `{n_prod:,} 장` | 합격: `{n_perf:,} 장` / 불량: `{n_dam:,} 장`")
-    st.write(f"- 시스템 총 관리비: `{n_cost:,} 원` (청정도 반영)")
+    st.write(f"- 부품 파손 불량률: `{n_rate:.3f} %` | 최종 먼지량: `{n_dust:.1f} %`")
+    st.write(f"- 합격품: `{n_perf:,} 장` / 불량품: `{n_dam:,} 장` | 총 관리비: `{n_cost:,} 원`")
 
 with col_right:
     st.subheader("🧲 LINE B: 초전도 자기부상")
-    ice_speed = st.slider("LINE B 이송 속도 (m/s)", 0.5, 8.0, 4.0, 0.1, key="i_speed")
+    ice_dashboard_speed = st.slider("LINE B 가동 속도 설정 (m/s)", 0.5, 8.0, 4.0, 0.1, key="i_dash_speed")
     
-    i_prod, i_perf, i_dam, i_vib, i_dust, i_rate, i_cost, i_profit = run_ice_calc(ice_speed, global_lanes, global_clean)
+    i_prod, i_perf, i_dam, i_vib, i_dust, i_rate, i_cost, i_profit = run_ice_calc(ice_dashboard_speed, global_lanes, global_clean)
     
     profit_diff = i_profit - n_profit
     st.metric(label="LINE B 최종 순이익", value=f"{i_profit:,} 원", delta=f"LINE A 대비 {profit_diff:+,} 원")
-    st.markdown("**🔹 물리/품질 수치**")
-    st.write(f"- 초전도 미세 진동수: `{i_vib:.3f} Hz` | 최종 먼지량: `{i_dust:.1f} %`")
-    st.write(f"- 부품 파손 불량률: `{i_rate:.3f} %` (초정밀 수율 반영)")
-    st.markdown("**🔹 생산/재무 수치**")
-    st.write(f"- 시간당 총 투입량: `{i_prod:,} 장` | 합격: `{i_perf:,} 장` / 불량: `{i_dam:,} 장`")
-    st.write(f"- 시스템 총 관리비: `{i_cost:,} 원` (초고성능 공조 반영)")
+    st.write(f"- 부품 파손 불량률: `{i_rate:.3f} %` | 최종 먼지량: `{i_dust:.1f} %`")
+    st.write(f"- 합격품: `{i_perf:,} 장` / 불량품: `{i_dam:,} 장` | 총 관리비: `{i_cost:,} 원`")
 
 st.markdown("---")
-st.subheader("🎦 실시간 2D 디지털 트윈 시뮬레이션 (동시 비교)")
-st.caption("※ 상단 슬라이더에서 조절한 각 라인의 속도(m/s)와 먼지 환경이 실시간 흐름 레이트에 완벽하게 연동됩니다.")
+
+# 4. 하단 레이아웃: 독립적인 2D 파티클 거동 물리 시뮬레이터 구성
+st.markdown("### 🎦 2. 디지털 트윈 물리 거동 시뮬레이션 (독립 제어)")
+st.caption("※ 상단 대시보드와 무관하게 고속 주행 시 기계식의 마찰 붕괴(3~5 m/s)와 초전도 무마찰 안정성(최대 15 m/s)을 직접 조작하며 대조합니다.")
+
+# 하단 전용 독립 슬라이더 배치
+sim_control_col1, sim_control_col2 = st.columns(2)
+with sim_control_col1:
+    # 기계식 컨베이어는 딱 임계점 한계가 연출되는 5.0 m/s까지로 세팅
+    sim_speed_a = st.slider("시뮬레이션 LINE A 컨베이어 속도 (m/s)", 0.5, 5.0, 2.0, 0.1, key="sim_speed_a")
+with sim_control_col2:
+    # 초전도 부상선은 시원하게 15.0 m/s 초고속 영역까지 관측
+    sim_speed_b = st.slider("시뮬레이션 LINE B 초전도 부상 속도 (m/s)", 0.5, 15.0, 6.0, 0.5, key="sim_speed_b")
 
 vis_col1, vis_col2 = st.columns(2)
 plot_container_a = vis_col1.empty()
@@ -137,11 +140,11 @@ map_width = 160.0
 frame = st.session_state.ani_frame
 
 # -----------------------------------------------------------------
-# 4. 실시간 먼지 이동 속도 제어 루프
+# 5. 실시간 독립 속도 연동 애니메이션 루프
 # -----------------------------------------------------------------
 while True:
-    # 각 슬라이더의 물리적 '속도'에 비례하여 프레임당 이격 거리(offset)를 다르게 연산
-    offset_a = (frame * normal_speed * 1.5) % map_width
+    # [LINE A 독립 애니메이션 연산]
+    offset_a = (frame * sim_speed_a * 1.5) % map_width
     current_x_a, current_y_a, colors_a = [], [], []
     
     for _, row in st.session_state.dust_base.iterrows():
@@ -149,8 +152,8 @@ while True:
         cur_y = row['y']
         if cur_x <= 100:
             if np.random.rand() > 0.4:
-                # 일반 기계식은 속도가 빠를수록 주변 먼지 입자가 심하게 요동침
-                cur_y = cur_y + (np.sin(frame + row['id']) * (normal_speed * 0.8))
+                # 일반 기계식은 속도가 올라갈수록 주변 먼지 요동 범위가 넓어짐
+                cur_y = cur_y + (np.sin(frame + row['id']) * (sim_speed_a * 0.8))
             cur_y = max(11, min(95, cur_y))
             current_x_a.append(cur_x)
             current_y_a.append(cur_y)
@@ -166,22 +169,23 @@ while True:
 
     wafer_y_a = 10
     wafer_color_a = '#63B3ED' 
-    if normal_speed >= 2.0:
-        vibration_intensity = (normal_speed - 1.5) * 1.5
+    
+    # ⭐ [고정 기계 한계 현실화]: 속도가 3.0 m/s 이상부터 덜덜 떨리기 시작하여 5.0으로 갈수록 진동이 극대화됨
+    if sim_speed_a >= 3.0:
+        # 3.0~5.0 사이의 과속 가중치에 따라 떨림(vibration_intensity)이 점진적으로 증가
+        vibration_intensity = (sim_speed_a - 2.8) * 2.0
         wafer_y_a += np.random.uniform(-vibration_intensity, vibration_intensity)
-        wafer_color_a = '#E53E3E' 
+        wafer_color_a = '#E53E3E' # 한계 위험 경고 (붉은색 변색)
         ax_a.text(50, 85, "⚠️ MECHANICAL FRICTION LIMIT", color='#E53E3E', weight='bold', ha='center', fontsize=9)
 
     rect_a = plt.Rectangle((42, wafer_y_a), 16, 12, color=wafer_color_a, zorder=5)
     ax_a.add_patch(rect_a)
     ax_a.text(50, wafer_y_a + 6, "WAFER A", color='black', weight='bold', ha='center', va='center', zorder=6)
     ax_a.scatter(current_x_a, current_y_a, color=colors_a, s=12, alpha=0.6, zorder=3)
-    ax_a.set_title(f"LINE A 실시간 거동 (유속 연동: {normal_speed:.1f} m/s)", color='white', fontsize=10)
+    ax_a.set_title(f"LINE A 운송 시뮬레이션 (구동속도: {sim_speed_a:.1f} m/s)", color='white', fontsize=10)
 
-    # -----------------------------------------------------------------
-    # LINE B (초전도) 속도 연동 애니메이션
-    # -----------------------------------------------------------------
-    offset_b = (frame * ice_speed * 1.5) % map_width
+    # [LINE B 독립 애니메이션 연산]
+    offset_b = (frame * sim_speed_b * 1.5) % map_width
     current_x_b, current_y_b, colors_b = [], [], []
     
     for _, row in st.session_state.dust_base.iterrows():
@@ -189,8 +193,8 @@ while True:
         cur_y = row['y']
         if cur_x <= 100:
             if 35 <= cur_x <= 65:
-                # 초전도는 웨이퍼를 통과할 때만 속도에 비례한 유체(공기) 밀림 현상 구현
-                disturbance = np.sin(frame * 0.5 + row['id']) * (ice_speed * 1.2)
+                # 초전도는 먼지들이 기류에 쓸려 나가는 현상 연출
+                disturbance = np.sin(frame * 0.5 + row['id']) * (sim_speed_b * 0.4)
                 cur_y = row['y'] + disturbance
             cur_y = max(11, min(95, cur_y))
             current_x_b.append(cur_x)
@@ -205,20 +209,20 @@ while True:
     ax_b.set_facecolor('#161A24')
     ax_b.axhline(y=10, color='#4A5568', linestyle='-', linewidth=6)
 
+    # ⭐ 초전도 부상선은 속도를 최대 15.0 m/s까지 끝까지 올려도 어떠한 요동이나 미세 떨림도 없이 수평 유지!
     rect_b = plt.Rectangle((42, 43), 16, 12, color='#9AE6B4', zorder=5)
     ax_b.add_patch(rect_b)
     ax_b.text(50, 49, "WAFER B", color='black', weight='bold', ha='center', va='center', zorder=6)
-    ax_b.text(50, 22, "Levitation Gap (Stable)", color='#A0AEC0', fontsize=8, ha='center')
+    ax_b.text(50, 22, "Levitation Gap (Perfect Stable)", color='#9AE6B4', fontsize=8, ha='center')
     ax_b.scatter(current_x_b, current_y_b, color=colors_b, s=12, alpha=0.6, zorder=3)
-    ax_b.set_title(f"LINE B 실시간 거동 (유속 연동: {ice_speed:.1f} m/s)", color='white', fontsize=10)
+    ax_b.set_title(f"LINE B 운송 시뮬레이션 (구동속도: {sim_speed_b:.1f} m/s)", color='white', fontsize=10)
 
-    # 화면에 렌더링 후 메모리 누수 방지 리셋
+    # 렌더링 화면 갱신
     plot_container_a.pyplot(fig_a)
     plot_container_b.pyplot(fig_b)
     plt.close(fig_a)
     plt.close(fig_b)
 
-    # 세션 상태 프레임 기록 및 제어
     time.sleep(0.03)
     frame += 1
     st.session_state.ani_frame = frame
